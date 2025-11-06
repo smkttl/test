@@ -1,0 +1,73 @@
+name: Extract RAR and Convert to ZIP
+
+on:
+  workflow_dispatch:
+    inputs:
+      rar_password:
+        description: 'RAR file password'
+        required: true
+        type: string
+
+jobs:
+  convert-archive:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Download and install WinRAR CLI
+      run: |
+        # 下载 WinRAR 命令行版本
+        $url = "https://www.rarlab.com/rar/winrar-x64-623.exe"
+        $installer = "winrar.exe"
+        Invoke-WebRequest -Uri $url -OutFile $installer
+        
+        # 静默安装 WinRAR
+        Start-Process -FilePath $installer -ArgumentList "/s" -Wait
+        
+        # 将 WinRAR 添加到 PATH
+        $winrarPath = "C:\Program Files\WinRAR"
+        echo "$winrarPath" | Out-File -FilePath $env:GITHUB_PATH -Append
+      
+    - name: Extract RAR with password
+      run: |
+        # 使用 WinRAR 解压带密码的 RAR 文件
+        $rarFile = "yourfile.rar"  # 替换为你的 RAR 文件名
+        $extractPath = "extracted"
+        
+        # 创建解压目录
+        New-Item -ItemType Directory -Force -Path $extractPath
+        
+        # 解压 RAR 文件（使用密码）
+        rar x -p${{ github.event.inputs.rar_password }} "$rarFile" "$extractPath\"
+        
+        # 检查解压是否成功
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "Failed to extract RAR file. Check the password."
+          exit 1
+        }
+      
+    - name: Create ZIP archive
+      run: |
+        $extractPath = "extracted"
+        $zipFile = "output.zip"
+        
+        # 使用 Compress-Archive 创建 ZIP 文件
+        Compress-Archive -Path "$extractPath\*" -DestinationPath $zipFile -Force
+        
+        # 检查 ZIP 文件是否创建成功
+        if (Test-Path $zipFile) {
+          Write-Host "ZIP file created successfully: $zipFile"
+          Write-Host "File size: $((Get-Item $zipFile).Length) bytes"
+        } else {
+          Write-Error "Failed to create ZIP file"
+          exit 1
+        }
+      
+    - name: Upload ZIP artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: converted-zip
+        path: output.zip
+        retention-days: 1
