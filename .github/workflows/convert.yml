@@ -39,15 +39,18 @@ jobs:
         Write-Host "Found RAR file: $((Get-Item $rarFile).Length) bytes"
       
     - name: Extract RAR with password
+      shell: cmd
       run: |
-        $rarFile = "${{ github.event.inputs.filename }}.rar"
-        $extractPath = "${{ github.event.inputs.filename }}extracted"
-        New-Item -ItemType Directory -Force -Path $extractPath
-        rar x -p${{ github.event.inputs.rar_password }} "$rarFile" "$extractPath\"
-        if ($LASTEXITCODE -ne 0) {
-          Write-Error "Failed to extract RAR file. Check the password."
-          exit 1
-        }
+        rar x -p"%password%" "%rar_file%" "%extract_path%\"
+        if errorlevel 1 (
+          echo Error: Failed to extract RAR file. Check the password or file integrity.
+          exit /b 1
+        )
+        echo Successfully extracted RAR file
+      env:
+        rar_file: ${{ github.event.inputs.filename }}.rar
+        password: ${{ github.event.inputs.rar_password }}
+        extract_path: ${{ github.event.inputs.filename }}_extracted
       
     - name: Create ZIP archive
       run: |
