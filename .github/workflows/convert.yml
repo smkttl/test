@@ -54,7 +54,7 @@ jobs:
       
     - name: Create ZIP archive
       run: |
-        $extractPath = "${{ github.event.inputs.filename }}extracted"
+        $extractPath = "${{ github.event.inputs.filename }}_extracted"
         $zipFile = "${{ github.event.inputs.filename }}.zip"
         Compress-Archive -Path "$extractPath\*" -DestinationPath $zipFile -Force
         if (Test-Path $zipFile) {
